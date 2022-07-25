@@ -1,8 +1,9 @@
 const DiscordJS = require('discord.js');
+const dotenv = require('dotenv');
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
-const Token = process.env['TOKEN']
-
+dotenv.config();
+const Token = process.env.TOKEN
 
 // Create client and add intents.
 const client = new DiscordJS.Client({
