@@ -1,5 +1,5 @@
 const DiscordJS = require('discord.js');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource } = require('@discordjs/voice');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
 const Token = process.env['TOKEN']
 
@@ -55,7 +55,7 @@ client.on('messageCreate', async msg => {
 
       // Get audio from video.
       const videoID = ytdl.getURLVideoID(url);
-      const stream = ytdl(videoID, { highWaterMark: 1 << 25, dlChunkSize: 1 << 12, quality: [91, 92, 93, 94, 95], liveBuffer: 4900 });
+      const stream = ytdl(videoID, { highWaterMark: 1 << 25, dlChunkSize: 1<<12, quality: [91,92,93,94,95], opusEncoded: true, liveBuffer: 4900 });
 
       // Create the audio player.
       const resource = createAudioResource(stream);
@@ -78,6 +78,10 @@ client.on('messageCreate', async msg => {
             connection.destroy();
           }
         }
+      })
+
+      player.on(AudioPlayerStatus.Idle, () => {
+        console.log(`An Error Occured`)                
       })
 
       break;
