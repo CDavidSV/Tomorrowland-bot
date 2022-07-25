@@ -82,7 +82,8 @@ client.on('messageCreate', async msg => {
       })
 
       player.on(AudioPlayerStatus.Idle, () => {
-        console.log(`An Error Occured`)                
+        console.log(`An Error Occured`)
+                
       })
 
       break;
