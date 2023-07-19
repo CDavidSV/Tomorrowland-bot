@@ -1,0 +1,21 @@
+{
+    "name": "aurora",
+    "version": "v1.0.0",
+    "clientId": "1000497170434236457",
+    "testGuildId": "970508802602455122",
+    "inviteLink": "https://discord.com/api/oauth2/authorize?client_id=1000497170434236457&permissions=274914618624&scope=bot%20applications.commands",
+    "embeds": {
+        "colors": {
+            "main": "#b917ff",
+            "error": "#e60000",
+            "success": "#00d46a",
+            "warning": "#ffcc00"
+        },
+        "images": {
+            "errorImg": "https://cdn.discordapp.com/attachments/1107660251286745108/1107661783457599619/error-icon.png",
+            "successImg": "https://cdn.discordapp.com/attachments/1107660251286745108/1107661769582854144/success-icon.png",
+            "playing": "https://media1.tenor.com/images/6bccf62f1691173159c35373068551c2/tenor.gif?itemid=26309669",
+            "stream": "https://cdn.discordapp.com/attachments/1107660251286745108/1131297918620532746/stream.gif"
+        }
+    }
+}
