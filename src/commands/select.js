@@ -2,6 +2,7 @@ const { EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, Ac
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
 const config = require('../../config.json');
 const getLiveStreams = require('../util/get-livestreams.js');
+const streamsScheema = require('../scheemas/streamsScheema');
 
 module.exports = {
     subCommand: 'live.select',
@@ -62,7 +63,7 @@ module.exports = {
                 originalMessage.edit({ components: [row] });
                 return;
             }
-            if (selectInteraction.guild?.members.me?.voice.channel) {
+            if (selectInteraction.guild?.members.me?.voice.channel && interaction.member?.voice.channelId != interaction.guild?.members.me?.voice.channelId) {
                 await selectInteraction.reply({ content: 'I\'m already inside a voice channel. Come say hi!', ephemeral: true });
                 originalMessage.edit({ components: [row] });
                 return;
@@ -112,11 +113,14 @@ module.exports = {
             // Listen for the player to stop.
             player.on(AudioPlayerStatus.Idle, async () => {
                 try {
+                    const newStream = await streamsScheema.findById({ _id: stream._id });
+
                     player.stop();
-                    player.play(createAudioResource(manifestUrl, { inputType: 'url' }));
+                    player.play(createAudioResource(newStream.manifestUrl, { inputType: 'url' }));
                 } catch {
                     player.stop();
                     connection.destroy();
+                    interaction.client.players.delete(interaction.guildId);
                     await interaction.channel?.send({ content: 'An error ocurred or the stream ended.' }).catch(console.error);
                 }
             });
@@ -128,6 +132,7 @@ module.exports = {
                         entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
                     ]);
                 } catch (error) {
+                    interaction.client.players.delete(interaction.guildId);
                     connection.destroy();
                 }
             });
