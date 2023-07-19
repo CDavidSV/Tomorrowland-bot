@@ -2,7 +2,6 @@ const { EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, Ac
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
 const config = require('../../config.json');
 const getLiveStreams = require('../util/get-livestreams.js');
-const ytdl = require('ytdl-core');
 
 module.exports = {
     subCommand: 'live.select',

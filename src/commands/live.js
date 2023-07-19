@@ -1,8 +1,5 @@
-const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ComponentType } = require('discord.js');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const config = require('../../config.json');
-const getLiveStreams = require('../util/get-livestreams.js');
-const ytdl = require('ytdl-core');
 
 module.exports = {
     data: new SlashCommandBuilder()
