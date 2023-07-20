@@ -202,11 +202,11 @@ module.exports = {
                 try {
                     const newStream = await streamsScheema.findById({ _id: stream.getVideoId() });
 
-                    player.stop();
+                    player.stop(true);
                     player.play(createAudioResource(newStream.manifestUrl, { inputType: 'url' }));
                 } catch (err) {
                     player.removeAllListeners();
-                    player.stop();
+                    player.stop(true);
                     connection.destroy();
                     interaction.client.players.delete(interaction.guildId);
                     console.error(err);
@@ -227,7 +227,7 @@ module.exports = {
                 } catch (error) {
                     interaction.client.players.delete(interaction.guildId);
                     player.removeAllListeners();
-                    player.stop();
+                    player.stop(true);
                     connection.destroy();
                 }
             });

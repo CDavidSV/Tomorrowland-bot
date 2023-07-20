@@ -17,7 +17,8 @@ module.exports = {
             return;
         }
 
-        guildPlayer.player.stop();
+        guildPlayer.player.removeAllListeners();
+        guildPlayer.player.stop(true);
         guildPlayer.connection.destroy();
 
         // Edit the embed to change state to stopped.
