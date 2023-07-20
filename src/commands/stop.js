@@ -20,6 +20,7 @@ module.exports = {
         guildPlayer.player.removeAllListeners();
         guildPlayer.player.stop(true);
         guildPlayer.connection.destroy();
+        guildPlayer.buttonCollector.stop();
 
         // Edit the embed to change state to stopped.
         guildPlayer.embed.setFields({ name: 'State', value: 'Stopped'})

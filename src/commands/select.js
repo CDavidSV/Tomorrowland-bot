@@ -55,6 +55,7 @@ const handleStopButton = async (interaction) => {
 
     guildPlayer.player.removeAllListeners();
     guildPlayer.player.stop(true);
+    guildPlayer.buttonCollector.stop();
     guildPlayer.connection.destroy();
 
     // Edit the embed to change state to stopped.
@@ -177,25 +178,42 @@ module.exports = {
 
             
             // ----------------- Voice -----------------
-
-            // Join the voice channel.
-            const connection = joinVoiceChannel({
-                channelId: selectInteraction.member.voice.channelId,
-                guildId: selectInteraction.guildId,
-                adapterCreator: selectInteraction.guild.voiceAdapterCreator
-            });
             
             // Get the manifest url.
             const manifestUrl = stream.getManifestUrl();
 
-            // Create the player and get the stream.
-            const player = createAudioPlayer();
-            player.play(createAudioResource(manifestUrl, { inputType: 'url' }));
+            const guildPlayer = interaction.client.players.get(interaction.guildId);
+            
+            let connection;
+            let player;
+            if (guildPlayer) {
+                const modifiedEmbed = guildPlayer.embed.setFields({ name: 'State', value: 'Stopped' });
+                await guildPlayer.message.edit({ embeds: [modifiedEmbed], components: [] }).catch(console.error);
 
+                // Get the connection.
+                connection = guildPlayer.connection;
+
+                // Stop the current player in the guild.
+                player = guildPlayer.player;
+                guildPlayer.buttonCollector.stop();
+                connection.removeAllListeners();
+                player.removeAllListeners();
+                player.stop(true);
+            } else {
+                // Join the voice channel.
+                connection = joinVoiceChannel({
+                    channelId: selectInteraction.member.voice.channelId,
+                    guildId: selectInteraction.guildId,
+                    adapterCreator: selectInteraction.guild.voiceAdapterCreator
+                });
+
+                player = createAudioPlayer();
+            }
+            player.play(createAudioResource(manifestUrl, { inputType: 'url' }));
             connection.subscribe(player);
 
             // Save the player on the client.
-            interaction.client.players.set(interaction.guildId, { player: player, connection: connection, message: originalMessage, requestedBy: interaction.member.user, embed: streamEmbed, state: 'playing' });
+            interaction.client.players.set(interaction.guildId, { player: player, connection: connection, message: originalMessage, requestedBy: interaction.member.user, embed: streamEmbed, buttonCollector: buttonCollector, state: 'playing' });
 
             // Listen for the player to stop.
             player.on(AudioPlayerStatus.Idle, async () => {
