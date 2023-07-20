@@ -113,14 +113,15 @@ module.exports = {
             // Listen for the player to stop.
             player.on(AudioPlayerStatus.Idle, async () => {
                 try {
-                    const newStream = await streamsScheema.findById({ _id: stream._id });
+                    const newStream = await streamsScheema.findById({ _id: stream.getVideoId() });
 
                     player.stop();
                     player.play(createAudioResource(newStream.manifestUrl, { inputType: 'url' }));
-                } catch {
+                } catch (err) {
                     player.stop();
                     connection.destroy();
                     interaction.client.players.delete(interaction.guildId);
+                    console.error(err);
                     await interaction.channel?.send({ content: 'An error ocurred or the stream ended.' }).catch(console.error);
                 }
             });
