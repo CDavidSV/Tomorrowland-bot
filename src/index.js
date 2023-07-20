@@ -37,7 +37,7 @@ const Token = process.env.TOKEN;
   
   // This function will run in parallel with the bot. If the database is empty, no streams will be available. 
   // If it's the first time using the bot, run the function once before starting it.
-  reloadStreams(); 
+  // reloadStreams(); 
   
   // Token.
   client.login(Token);
