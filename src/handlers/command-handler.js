@@ -10,7 +10,7 @@ const setupCommands = (token, client) => {
     // Get all Commands and determine the type.
     getFiles('./src/commands', '.js', 'SLASH COMMANDS').forEach((commandFile) => {
         const command = require(`${commandFile}`);
-        if (!command || !command.data) return;
+        if (Object.keys(command).length === 0) return;
 
         if (command.subCommand) {
             return client.subCommands.set(command.subCommand, command);
