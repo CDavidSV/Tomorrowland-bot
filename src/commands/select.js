@@ -1,47 +1,40 @@
 const { EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ComponentType, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { joinVoiceChannel, createAudioPlayer, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus } = require('@discordjs/voice');
+const { joinVoiceChannel, createAudioPlayer, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus, entersState } = require('@discordjs/voice');
 const config = require('../../config.json');
 const getLiveStreams = require('../util/get-livestreams.js');
 const streamsScheema = require('../scheemas/streamsScheema');
+const { destroy } = require('..');
+
+const STOP_PLAYER = 'stop_player';
+const PAUSE_PLAYBACK = 'pause_playback';
+const RESUME_PLAYBACK = 'resume_playback';
+
+const createButton = (customId, label, style) => new ButtonBuilder().setCustomId(customId).setLabel(label).setStyle(style);
 
 // Buttons.
 const playerButtons = new ActionRowBuilder()
     .addComponents([
-        new ButtonBuilder()
-            .setCustomId('stop_player')
-            .setLabel('◼')
-            .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-            .setCustomId('pause_playback')
-            .setLabel('❚❚')
-            .setStyle(ButtonStyle.Secondary),
+        createButton(STOP_PLAYER, '◼', ButtonStyle.Danger),
+        createButton(PAUSE_PLAYBACK, '❚❚', ButtonStyle.Secondary),
     ]);
 
 const playerButtonsPaused = new ActionRowBuilder()
     .addComponents([
-        new ButtonBuilder()
-            .setCustomId('stop_player')
-            .setLabel('◼')
-            .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-            .setCustomId('resume_playback')
-            .setLabel('▶')
-            .setStyle(ButtonStyle.Success),
+        createButton(STOP_PLAYER, '◼', ButtonStyle.Danger),
+        createButton(RESUME_PLAYBACK, '▶', ButtonStyle.Success),
     ]);
 
-const handlePLaybackButton = async (interaction) => {
+const handlePlaybackButton = async (interaction) => {
     const guildPlayer = interaction.client.players.get(interaction.guildId);
     if (!guildPlayer) return;
 
-    if (guildPlayer.state === 'playing') {
+    if (guildPlayer.player.state.status === AudioPlayerStatus.Playing) {
         guildPlayer.player.pause();
-        guildPlayer.state = 'paused';
         
         const modifiedEmbed = guildPlayer.embed.setFields({ name: 'State', value: 'Paused' });
         await guildPlayer.message.edit({ embeds: [modifiedEmbed], components: [playerButtonsPaused] }).catch(console.error);
-    } else if (guildPlayer.state === 'paused') {
+    } else if (guildPlayer.player.state.status === AudioPlayerStatus.Paused) {
         guildPlayer.player.unpause();
-        guildPlayer.state = 'playing';
 
         const modifiedEmbed = guildPlayer.embed.setFields({ name: 'State', value: 'Delayed'});
         await guildPlayer.message.edit({ embeds: [modifiedEmbed], components: [playerButtons] }).catch(console.error);
@@ -56,7 +49,7 @@ const handleStopButton = async (interaction) => {
     guildPlayer.player.removeAllListeners();
     guildPlayer.player.stop(true);
     guildPlayer.buttonCollector.stop();
-    guildPlayer.connection.destroy();
+    destroyConnection(guildPlayer.connection);
 
     // Edit the embed to change state to stopped.
     guildPlayer.embed.setFields({ name: 'State', value: 'Stopped'})
@@ -68,7 +61,9 @@ const handleStopButton = async (interaction) => {
 
 const handlePlayerButtons = (interaction) => {
     const buttonCollector = interaction.channel?.createMessageComponentCollector({
-        filter: (buttonInteraction) => buttonInteraction.customId === 'stop_player' || buttonInteraction.customId === 'pause_playback' || buttonInteraction.customId === 'resume_playback',
+        filter: (buttonInteraction) => {
+            return [STOP_PLAYER, PAUSE_PLAYBACK, RESUME_PLAYBACK].includes(buttonInteraction.customId);
+        },
         componentType: ComponentType.Button
     });
     
@@ -82,10 +77,10 @@ const handlePlayerButtons = (interaction) => {
                 handleStopButton(buttonInteraction);
                 break;
             case 'pause_playback':
-                handlePLaybackButton(buttonInteraction);
+                handlePlaybackButton(buttonInteraction);
                 break;
             case 'resume_playback':
-                handlePLaybackButton(buttonInteraction);
+                handlePlaybackButton(buttonInteraction);
                 break;
         }
     });
@@ -93,9 +88,27 @@ const handlePlayerButtons = (interaction) => {
     return buttonCollector;
 }
 
-const startPlayer = async (interaction, stream, originalMessage) => {
+const destroyConnection = async (connection) => {
+    try {
+        connection.destroy();
+    } catch (err) {
+        console.error(err);
+    }
+}
 
-    return { connection, player };
+const handleError = async (interaction, error, embed, type) => {
+    const guildPlayer = interaction.client.players.get(interaction.guildId);
+
+    if (!guildPlayer) return;
+    await guildPlayer.message.edit({ components: [], embeds: [embed.setFields({ name: 'State', value: `${type} Error`})] }).catch(console.error);
+
+    console.log(error);
+
+    interaction.client.players.delete(interaction.guildId);
+    guildPlayer.buttonCollector.stop();
+    guildPlayer.player.removeAllListeners();
+    guildPlayer.player.stop(true);
+    destroyConnection(guildPlayer.connection);
 }
 
 module.exports = {
@@ -143,7 +156,7 @@ module.exports = {
         selector.addOptions(selectOptions);
         const row = new ActionRowBuilder().addComponents(selector);
 
-        const originalMessage = await interaction.reply({ embeds: [livesEmbed], components: [row] });
+        const originalMessage = await interaction.reply({ embeds: [livesEmbed], components: [row], fetchReply: true });
 
         // Listen for the selection.
         selectCollector.on('collect', async (selectInteraction) => {
@@ -159,12 +172,12 @@ module.exports = {
             }
             if (selectInteraction.guild?.members.me?.voice.channel && interaction.member?.voice.channelId != interaction.guild?.members.me?.voice.channelId) {
                 await selectInteraction.reply({ content: 'I\'m already inside a voice channel. Come say hi!', ephemeral: true });
-                originalMessage.edit({ components: [row] });
+                originalMessage.edit({ components: [] });
                 return;
             }
             if (!selectInteraction.member?.voice.channel.viewable) {
                 await selectInteraction.reply({ content: 'Insufficient permissions to join the selected voice channel', ephemeral: true });
-                originalMessage.edit({ components: [row] });
+                originalMessage.edit({ components: [] });
                 return;
             }
             await selectInteraction.deferUpdate();
@@ -231,14 +244,7 @@ module.exports = {
                     player.stop(true);
                     player.play(createAudioResource(newStream.manifestUrl, { inputType: 'url' }));
                 } catch (err) {
-                    buttonCollector.stop();
-                    player.removeAllListeners();
-                    player.stop(true);
-                    connection.destroy();
-                    interaction.client.players.delete(interaction.guildId);
-
-                    console.error(err);
-                    await originalMessage.edit({ embeds: [streamEmbed.setFields({ name: 'State', value: 'Error' })], components: [] }).catch(console.error);
+                    handleError(interaction, err, streamEmbed, 'Stream');
                     await interaction.channel?.send({ content: 'An error ocurred or the stream ended.' }).catch(console.error);
                 }
             });
@@ -247,25 +253,26 @@ module.exports = {
                 await originalMessage.edit({ embeds: [streamEmbed], components: [playerButtons] }).catch(console.error);
             });
 
-            connection.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
+            connection.on(VoiceConnectionStatus.Disconnected, async () => {
                 try {
+                    await originalMessage.edit({ components: [] });
                     await Promise.race([
                         entersState(connection, VoiceConnectionStatus.Signalling, 5_000),
                         entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
                     ]);
-                } catch (error) {
-                    await originalMessage.edit({ components: [] }).catch(console.error);
 
-                    interaction.client.players.delete(interaction.guildId);
-                    buttonCollector.stop();
-                    player.removeAllListeners();
-                    player.stop(true);
-                    connection.destroy();
+                    if (player.state.status === AudioPlayerStatus.Playing) {
+                        await originalMessage.edit({ components: [playerButtons] }).catch(console.error);
+                    } else {
+                        await originalMessage.edit({ components: [playerButtonsPaused] }).catch(console.error);
+                    }
+                } catch (error) {
+                    handleError(interaction, error, streamEmbed, 'Connection');
                 }
             });
 
             // Save the player on the client.
-            interaction.client.players.set(interaction.guildId, { player: player, connection: connection, message: originalMessage, requestedBy: interaction.member.user, embed: streamEmbed, buttonCollector: buttonCollector, state: 'playing' });
+            interaction.client.players.set(interaction.guildId, { player: player, connection: connection, message: originalMessage, requestedBy: interaction.member.user, embed: streamEmbed, buttonCollector: buttonCollector });
         });
     } 
 }

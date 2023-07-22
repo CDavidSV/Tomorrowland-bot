@@ -1,6 +1,6 @@
 {
     "name": "aurora",
-    "version": "v1.2.4",
+    "version": "v1.2.5",
     "clientId": "1000497170434236457",
     "testGuildId": "970508802602455122",
     "inviteLink": "https://discord.com/api/oauth2/authorize?client_id=1000497170434236457&permissions=274914618624&scope=bot%20applications.commands",
