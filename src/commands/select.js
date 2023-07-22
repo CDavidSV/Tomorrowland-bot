@@ -66,6 +66,38 @@ const handleStopButton = async (interaction) => {
     interaction.client.players.delete(interaction.guild.id);
 }
 
+const handlePlayerButtons = (interaction) => {
+    const buttonCollector = interaction.channel?.createMessageComponentCollector({
+        filter: (buttonInteraction) => buttonInteraction.customId === 'stop_player' || buttonInteraction.customId === 'pause_playback' || buttonInteraction.customId === 'resume_playback',
+        componentType: ComponentType.Button
+    });
+    
+    buttonCollector.on('collect', async (buttonInteraction) => {
+        if (buttonInteraction.user.id !== interaction.user.id) {
+            await buttonInteraction.reply({ content: 'You cannot control this player.', ephemeral: true });
+            return;
+        }
+        switch (buttonInteraction.customId) {
+            case 'stop_player':
+                handleStopButton(buttonInteraction);
+                break;
+            case 'pause_playback':
+                handlePLaybackButton(buttonInteraction);
+                break;
+            case 'resume_playback':
+                handlePLaybackButton(buttonInteraction);
+                break;
+        }
+    });
+
+    return buttonCollector;
+}
+
+const startPlayer = async (interaction, stream, originalMessage) => {
+
+    return { connection, player };
+}
+
 module.exports = {
     subCommand: 'live.select',
     callback: async (interaction) => {
@@ -141,28 +173,7 @@ module.exports = {
             const baseUrl = 'https://www.youtube.com/watch?v=';
 
             // Start button Collector.
-            const buttonCollector = interaction.channel?.createMessageComponentCollector({
-                filter: (buttonInteraction) => buttonInteraction.customId === 'stop_player' || buttonInteraction.customId === 'pause_playback' || buttonInteraction.customId === 'resume_playback',
-                componentType: ComponentType.Button
-            });
-            
-            buttonCollector.on('collect', async (buttonInteraction) => {
-                if (buttonInteraction.user.id !== interaction.user.id) {
-                    await buttonInteraction.reply({ content: 'You cannot control this player.', ephemeral: true });
-                    return;
-                }
-                switch (buttonInteraction.customId) {
-                    case 'stop_player':
-                        handleStopButton(buttonInteraction);
-                        break;
-                    case 'pause_playback':
-                        handlePLaybackButton(buttonInteraction);
-                        break;
-                    case 'resume_playback':
-                        handlePLaybackButton(buttonInteraction);
-                        break;
-                }
-            });
+            const buttonCollector = handlePlayerButtons(interaction);
 
             // Edit the original message.
             const streamEmbed = new EmbedBuilder()
@@ -176,9 +187,9 @@ module.exports = {
                 .setTimestamp()
             await originalMessage.edit({ embeds: [streamEmbed], components: [] }).catch(console.error);
 
-            
-            // ----------------- Voice -----------------
-            
+
+            // ------------------- Start the player -------------------
+
             // Get the manifest url.
             const manifestUrl = stream.getManifestUrl();
 
@@ -212,9 +223,6 @@ module.exports = {
             player.play(createAudioResource(manifestUrl, { inputType: 'url' }));
             connection.subscribe(player);
 
-            // Save the player on the client.
-            interaction.client.players.set(interaction.guildId, { player: player, connection: connection, message: originalMessage, requestedBy: interaction.member.user, embed: streamEmbed, buttonCollector: buttonCollector, state: 'playing' });
-
             // Listen for the player to stop.
             player.on(AudioPlayerStatus.Idle, async () => {
                 try {
@@ -223,11 +231,14 @@ module.exports = {
                     player.stop(true);
                     player.play(createAudioResource(newStream.manifestUrl, { inputType: 'url' }));
                 } catch (err) {
+                    buttonCollector.stop();
                     player.removeAllListeners();
                     player.stop(true);
                     connection.destroy();
                     interaction.client.players.delete(interaction.guildId);
+
                     console.error(err);
+                    await originalMessage.edit({ embeds: [streamEmbed.setFields({ name: 'State', value: 'Error' })], components: [] }).catch(console.error);
                     await interaction.channel?.send({ content: 'An error ocurred or the stream ended.' }).catch(console.error);
                 }
             });
@@ -243,12 +254,18 @@ module.exports = {
                         entersState(connection, VoiceConnectionStatus.Connecting, 5_000),
                     ]);
                 } catch (error) {
+                    await originalMessage.edit({ components: [] }).catch(console.error);
+
                     interaction.client.players.delete(interaction.guildId);
+                    buttonCollector.stop();
                     player.removeAllListeners();
                     player.stop(true);
                     connection.destroy();
                 }
             });
+
+            // Save the player on the client.
+            interaction.client.players.set(interaction.guildId, { player: player, connection: connection, message: originalMessage, requestedBy: interaction.member.user, embed: streamEmbed, buttonCollector: buttonCollector, state: 'playing' });
         });
     } 
 }
