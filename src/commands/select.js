@@ -3,7 +3,6 @@ const { joinVoiceChannel, createAudioPlayer, createAudioResource, VoiceConnectio
 const config = require('../../config.json');
 const getLiveStreams = require('../util/get-livestreams.js');
 const streamsScheema = require('../scheemas/streamsScheema');
-const { destroy } = require('..');
 
 const STOP_PLAYER = 'stop_player';
 const PAUSE_PLAYBACK = 'pause_playback';
