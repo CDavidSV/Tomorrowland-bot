@@ -17,9 +17,16 @@ module.exports = {
 
         let lineupsStream1 = [];
         let lineupsStream2 = [];
+
+        lineups.sort((a, b) => a.startTimestamp - b.startTimestamp);
         for (const lineup of lineups) {
-            if (lineup.stream === 1) lineupsStream1.push(`**${lineup.artistName}** <t:${lineup.startTimestamp / 1000}:R>\n*${lineup.stage}*`);
-            else lineupsStream2.push(`**${lineup.artistName}** <t:${lineup.startTimestamp / 1000}:R>\n*${lineup.stage}*`);
+            let message = ``;
+            if (Date.now() > lineup.startTimestamp && Date.now() < lineup.endTimestamp) message = `**${lineup.artistName}:** \`Now Playing\`\n*${lineup.stage}*`;
+            else if (Date.now() < lineup.startTimestamp) message = `**${lineup.artistName}:** Up Next <t:${lineup.startTimestamp / 1000}:R>\n*${lineup.stage}*`;
+            else if (Date.now() > lineup.endTimestamp) message = `**${lineup.artistName}:** Finished <t:${lineup.endTimestamp / 1000}:R>\n*${lineup.stage}*`;
+
+            if (lineup.stream === 1) lineupsStream1.push(message);
+            else lineupsStream2.push(message);
         }
 
         const streamSelect = new StringSelectMenuBuilder()
