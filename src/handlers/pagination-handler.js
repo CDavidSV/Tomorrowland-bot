@@ -38,7 +38,7 @@ module.exports = class PaginationHandler {
         } else if (this.currentPage === 0) {
             this.paginationButtons.components[0].setDisabled(true);
             this.paginationButtons.components[2].setDisabled(false);
-        } else if (this.currentPage === this.pages - 1) {
+        } else if (this.currentPage >= this.pages - 1) {
             this.paginationButtons.components[0].setDisabled(false);
             this.paginationButtons.components[2].setDisabled(true);
         } else {
@@ -50,6 +50,10 @@ module.exports = class PaginationHandler {
     updateEmbeds(newEmbedsList) {
         this.embeds = newEmbedsList;
         this.pages = this.embeds.length;
+
+        if (this.currentPage >= this.pages -1) {
+            this.currentPage = this.pages - 1;
+        }
 
         this.updateButtonState();
     }
@@ -64,8 +68,6 @@ module.exports = class PaginationHandler {
 
     nextPage() {
         if (this.currentPage >= this.pages - 1) {
-            this.currentPage = this.pages - 1;
-            this.updateButtonState();
             return { pageNumber: `Page **${this.currentPage + 1}** of **${this.pages}**`, embed: this.embeds[-1], buttons: this.paginationButtons };
         }
 
