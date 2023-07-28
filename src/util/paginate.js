@@ -19,8 +19,6 @@ const paginate = (itemsList, quantity = 10, options) => {
             .addFields(options.fields || [])
             .setColor(options.color || null)
             .setThumbnail(options.thumbnail || null)
-        
-        if (embedQuantity > 1) embed.setFooter({ text: `Page ${i + 1} of ${embedQuantity}` });
 
         for (let item of pages[i]) {
             items += `\`${count}\` ${item}\n`;
