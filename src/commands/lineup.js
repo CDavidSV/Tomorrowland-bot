@@ -54,7 +54,7 @@ module.exports = {
         const handlePagination1 = new PaginationHandler(interaction.id, lineupEmbedsStream1);
         const handlePagination2 = new PaginationHandler(interaction.id, lineupEmbedsStream2);
 
-        const replyMsg = await interaction.reply({ content: handlePagination1.pageNumber, embeds: [handlePagination1.getCurrentEmbed()], components: [row, handlePagination1.getButtons()], fetchReply: true });
+        const replyMsg = await interaction.reply({ content: handlePagination1.getPageNumber(), embeds: [handlePagination1.getCurrentEmbed()], components: [row, handlePagination1.getButtons()], fetchReply: true });
 
         const selectCollector = interaction.channel.createMessageComponentCollector({ ComponentType: ComponentType.ActionRow, filter: (i) => i.customId === `stream${interaction.id}`, time: 3600000 });
         const buttonCollector = interaction.channel.createMessageComponentCollector({ ComponentType: ComponentType.Button, filter: (i) => i.customId.split('.')[1] === interaction.id, time: 3600000 });
@@ -65,12 +65,12 @@ module.exports = {
                 menuOption = 1;
                 row.components[0].options[0].setDefault(true);
                 row.components[0].options[1].setDefault(false);
-                await replyMsg.edit({ content: handlePagination1.pageNumber, embeds: [handlePagination1.getCurrentEmbed()], components: [row, handlePagination1.getButtons()]}).catch(console.error);
+                await replyMsg.edit({ content: handlePagination1.getPageNumber(), embeds: [handlePagination1.getCurrentEmbed()], components: [row, handlePagination1.getButtons()]}).catch(console.error);
             } else {
                 menuOption = 2;
                 row.components[0].options[0].setDefault(false);
                 row.components[0].options[1].setDefault(true);
-                await replyMsg.edit({ content: handlePagination2.pageNumber, embeds: [handlePagination2.getCurrentEmbed()], components: [row, handlePagination2.getButtons()]}).catch(console.error);
+                await replyMsg.edit({ content: handlePagination2.getPageNumber(), embeds: [handlePagination2.getCurrentEmbed()], components: [row, handlePagination2.getButtons()]}).catch(console.error);
             }
             collectorInteraction.deferUpdate();
         });

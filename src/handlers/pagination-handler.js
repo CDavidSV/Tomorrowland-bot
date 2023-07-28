@@ -26,6 +26,10 @@ module.exports = class PaginationHandler {
         return this.id;
     }
 
+    getPageNumber() {
+        return `Page **${this.currentPage + 1}** of **${this.pages}**`;
+    }
+
     updateButtonState() {
         // Check the current page and update the enabled and dissable buttons.
         if (this.pages === 1) {
