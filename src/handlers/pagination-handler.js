@@ -1,94 +1,116 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
-const paginationHandler = async (interaction, itemsList, options = { quantity: 10 }) => {
-    if (itemsList.length === 0) throw new Error('No items');
-    
-    let embeds = [];
-    const embedQuantity = Math.ceil(itemsList.length / options.quantity);
+module.exports = class PaginationHandler {
+    constructor(interactionId, embeds, page = 1) { 
+        this.embeds = embeds;
+        this.pages = embeds.length;
+        this.id = interactionId;
 
-    const pages = [];
-
-    for (let i = 0; i < itemsList.length; i += options.quantity) {
-        pages.push(itemsList.slice(i, i + options.quantity));
-    }
-
-    let count = 1;
-    for (let i = 0; i < embedQuantity; i++) {
-        let items = options.description && options.description.length !== 0 ? `${options.description}\n\n` : '';
-        const embed = new EmbedBuilder()
-            .setTitle(options.title || null)
-            .addFields(options.fields || [])
-            .setColor(options.color || null)
-            .setThumbnail(options.thumbnail || null)
+        if (page > this.pages) {
+            this.currentPage = this.pages - 1;
+        }
+        this.currentPage = page - 1;
         
-        if (embedQuantity > 1) embed.setFooter({ text: `Page ${i + 1} of ${embedQuantity}` });
+        // Build Buttons.
+        this.paginationButtons = new ActionRowBuilder()
+        .addComponents([
+            new ButtonBuilder().setCustomId(`previous.${this.id}`).setEmoji('1133857717027614811').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId(`stop.${this.id}`).setEmoji('1133857126478008430').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId(`next.${this.id}`).setEmoji('1133857705241620530').setStyle(ButtonStyle.Primary)
+        ]);
 
-        for (let [index, item] of pages[i].entries()) {
-            items += `\`${count}\` ${item}\n`;
-            count++;
-        }
-        embed.setDescription(items);
-
-        embeds.push(embed);
+        this.updateButtonState();
     }
 
-    // Buttons.
-    const paginationButtons = new ActionRowBuilder()
-    .addComponents([
-        new ButtonBuilder().setCustomId('previous').setLabel('<').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('next').setLabel('>').setStyle(ButtonStyle.Primary)
-    ]);
-
-    // Pagination button colletor.
-    const collector = interaction.channel.createMessageComponentCollector({
-        filter: (buttonInteraction) => buttonInteraction.customId === 'next' || buttonInteraction.customId === 'previous',
-        time: 900_000
-    });
-
-    // Disable buttons if there's only one embed.
-    if (embedQuantity === 1) {
-        paginationButtons.components[0].setDisabled(true); 
-        paginationButtons.components[1].setDisabled(true);
-    } else {
-        paginationButtons.components[0].setDisabled(true);
+    getId() {
+        return this.id;
     }
-    const replyMsg = await interaction.reply({ embeds: [embeds[0]], components: [paginationButtons],  fetchReply: true });
-    
-    setTimeout(async () => {
-        paginationButtons.components[0].setDisabled(true); 
-        paginationButtons.components[1].setDisabled(true);
 
-        await replyMsg.edit({ components: [paginationButtons] }.catch(console.error));
-    }, 900_000);
-
-    // Current index for the embeds array.
-    let currentIndex = 0;
-
-    collector.on('collect', async (buttonInteraction) => {
-        switch (buttonInteraction.customId) {
-            case 'next':
-                paginationButtons.components[0].setDisabled(false); 
-                if (currentIndex + 1 >= embeds.length - 1) {
-                    paginationButtons.components[1].setDisabled(true);
-                }
-
-                currentIndex++;
-                await replyMsg.edit({ embeds: [embeds[currentIndex]], components: [paginationButtons] });
-                break;
-            case 'previous':
-                paginationButtons.components[1].setDisabled(false);
-                if (currentIndex - 1 <= 0) {
-                    paginationButtons.components[0].setDisabled(true);
-                }
-
-                currentIndex--;
-                await replyMsg.edit({ embeds: [embeds[currentIndex]], components: [paginationButtons] });
-                break;
+    updateButtonState() {
+        // Check the current page and update the enabled and dissable buttons.
+        if (this.pages === 1) {
+            this.paginationButtons.components[0].setDisabled(true);
+            this.paginationButtons.components[2].setDisabled(true);
+        } else if (this.currentPage === 0) {
+            this.paginationButtons.components[0].setDisabled(true);
+            this.paginationButtons.components[2].setDisabled(false);
+        } else if (this.currentPage === this.pages - 1) {
+            this.paginationButtons.components[0].setDisabled(false);
+            this.paginationButtons.components[2].setDisabled(true);
+        } else {
+            this.paginationButtons.components[0].setDisabled(false);
+            this.paginationButtons.components[2].setDisabled(false);
         }
-        await buttonInteraction.deferUpdate().catch(console.error);
-    });
+    }
 
-    return replyMsg;
+    updateEmbeds(newEmbedsList) {
+        this.embeds = newEmbedsList;
+        this.pages = this.embeds.length;
+
+        this.updateButtonState();
+    }
+
+    getCurrentEmbed() {
+        return this.embeds[this.currentPage];
+    }
+
+    getButtons() {
+        return this.paginationButtons;
+    }
+
+    nextPage() {
+        if (this.currentPage >= this.pages - 1) {
+            this.currentPage = this.pages - 1;
+            this.updateButtonState();
+            return { pageNumber: `Page **${this.currentPage + 1}** of **${this.pages}**`, embed: this.embeds[-1], buttons: this.paginationButtons };
+        }
+
+        this.currentPage++;
+        this.updateButtonState();
+        return { pageNumber: `Page **${this.currentPage + 1}** of **${this.pages}**`, embed: this.embeds[this.currentPage], buttons: this.paginationButtons };
+    }
+
+    previousPage() {
+        if (this.currentPage === 0) {
+            return { pageNumber: `Page **${this.currentPage + 1}** of **${this.pages}**`, embed: this.embeds[this.currentPage], buttons: this.paginationButtons };
+        }
+
+        this.currentPage--;
+        this.updateButtonState();
+        return { pageNumber: `Page **${this.currentPage + 1}** of **${this.pages}**`, embed: this.embeds[this.currentPage], buttons: this.paginationButtons };
+    }
+
+    getPage(page) {
+        // Cases where the page is out of bounds.
+        if (page >= this.pages) {
+            this.paginationButtons.components[0].setDisabled(false);
+            this.paginationButtons.components[2].setDisabled(true);
+
+            this.currentPage = this.pages - 1;
+            return { pageNumber: `Page **${this.currentPage + 1}** of **${this.pages}**`, embed: this.embeds[-1], buttons: this.paginationButtons };
+        }
+        if (page <= 1) {
+            this.paginationButtons.components[0].setDisabled(true);
+            this.paginationButtons.components[2].setDisabled(false);
+
+            this.currentPage = 0;
+            return { pageNumber: `Page **${this.currentPage + 1}** of **${this.pages}**`, embed: this.embeds[0], buttons: this.paginationButtons };
+        }
+
+        this.updateButtonState();
+        return { pageNumber: `Page **${this.currentPage + 1}** of **${this.pages}**`, embed: this.embeds[page - 1], buttons: this.paginationButtons };
+    }
+
+    getPageOnButtonId(buttonId) {
+        switch (buttonId) {
+            case `next.${this.id}`:
+                return this.nextPage();
+            case `previous.${this.id}`:
+                return this.previousPage();
+            case `stop.${this.id}`:
+                return null;
+            default:
+                throw new Error('Invalid button id');
+        }
+    }
 }
-
-module.exports = paginationHandler;
