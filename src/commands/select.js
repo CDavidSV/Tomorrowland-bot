@@ -31,12 +31,12 @@ const handlePlaybackButton = async (interaction) => {
         guildPlayer.player.pause();
         
         const modifiedEmbed = guildPlayer.embed.setFields({ name: 'State', value: 'Paused' });
-        await guildPlayer.message.edit({ embeds: [modifiedEmbed], components: [playerButtonsPaused] }).catch(console.error);
+        await interaction.update({ embeds: [modifiedEmbed], components: [playerButtonsPaused] }).catch(console.error);
     } else if (guildPlayer.player.state.status === AudioPlayerStatus.Paused) {
         guildPlayer.player.unpause();
 
         const modifiedEmbed = guildPlayer.embed.setFields({ name: 'State', value: 'Delayed'});
-        await guildPlayer.message.edit({ embeds: [modifiedEmbed], components: [playerButtons] }).catch(console.error);
+        await interaction.update({ embeds: [modifiedEmbed], components: [playerButtons] }).catch(console.error);
     }
     await interaction.deferUpdate().catch(console.error);
 }
@@ -53,7 +53,7 @@ const handleStopButton = async (interaction) => {
     // Edit the embed to change state to stopped.
     guildPlayer.embed.setFields({ name: 'State', value: 'Stopped'})
 
-    await guildPlayer.message.edit({ embeds: [guildPlayer.embed], components: [] }).catch(console.error);
+    await interaction.update({ embeds: [guildPlayer.embed], components: [] }).catch(console.error);
     await interaction.deferUpdate().catch(console.error);
     interaction.client.players.delete(interaction.guild.id);
 }
@@ -157,26 +157,30 @@ module.exports = {
 
         const originalMessage = await interaction.reply({ embeds: [livesEmbed], components: [row], fetchReply: true });
 
+        selectCollector.on('end', () => {
+            originalMessage.delete().catch(console.log);
+        });
+
         // Listen for the selection.
         selectCollector.on('collect', async (selectInteraction) => {
             if (selectInteraction.user.id !== interaction.user.id) {
                 await selectInteraction.reply({ content: 'You cannot use this selector.', ephemeral: true });
-                originalMessage.edit({ components: [row] });
+                selectInteraction.update({ components: [row] }).catch(console.error);
                 return;
             }
             if (!selectInteraction.member?.voice.channel) {
                 await selectInteraction.reply({ content: "You need to be inside a ****voice channel****.", ephemeral: true });
-                originalMessage.edit({ components: [row] });
+                selectInteraction.update({ components: [row] }).catch(console.error);
                 return;
             }
             if (selectInteraction.guild?.members.me?.voice.channel && interaction.member?.voice.channelId != interaction.guild?.members.me?.voice.channelId) {
                 await selectInteraction.reply({ content: 'I\'m already inside a voice channel. Come say hi!', ephemeral: true });
-                originalMessage.edit({ components: [] });
+                selectInteraction.update({ components: [] }).catch(console.error);
                 return;
             }
             if (!selectInteraction.member?.voice.channel.viewable) {
                 await selectInteraction.reply({ content: 'Insufficient permissions to join the selected voice channel', ephemeral: true });
-                originalMessage.edit({ components: [] });
+                selectInteraction.update({ components: [] }).catch(console.error);
                 return;
             }
             await selectInteraction.deferUpdate();
@@ -197,7 +201,7 @@ module.exports = {
                 .setColor(config.embeds.colors.error)
                 .setFooter({ text: `Requested by ${interaction.member.user.username}`, iconURL: interaction.member.user.avatarURL() })
                 .setTimestamp()
-            await originalMessage.edit({ embeds: [streamEmbed], components: [] }).catch(console.error);
+            await selectInteraction.update({ embeds: [streamEmbed], components: [] }).catch(console.error);
 
 
             // ------------------- Start the player -------------------
